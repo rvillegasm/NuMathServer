@@ -270,14 +270,16 @@ void postSimpleGaussianElimination(const Rest::Request &request, Http::ResponseW
     // parse json
     auto json_body = json::parse(body);
     double numEq = json_body["numEq"];
-    std::vector<double> nums = json_body["nums"];
+    std::vector<double> numsA = json_body["numsA"];
+    std::vector<double> numsB = json_body["numsB"];
     // preprocess info
     std::vector<std::vector<double>> augmentedMatrix;
     for (unsigned int i = 0; i < numEq; i++) {
         std::vector<double> row;
-        for (unsigned int j = 0; j < numEq + 1; j++) {
-            row.push_back(nums[i*(numEq+1)+j]);
+        for (unsigned int j = 0; j < numEq; j++) {
+            row.push_back(numsA[i*(numEq)+j]);
         }
+        row.push_back(numsB[i]);
         augmentedMatrix.push_back(row);
     }
     // Prepare the response
@@ -301,17 +303,18 @@ void postGaussianEliminationPartialPivot(const Rest::Request &request, Http::Res
     // parse json
     auto json_body = json::parse(body);
     double numEq = json_body["numEq"];
-    std::vector<double> nums = json_body["nums"];
+    std::vector<double> numsA = json_body["numsA"];
+    std::vector<double> numsB = json_body["numsB"];
     // preprocess info
     std::vector<std::vector<double>> augmentedMatrix;
     for (unsigned int i = 0; i < numEq; i++) {
         std::vector<double> row;
-        for (unsigned int j = 0; j < numEq + 1; j++) {
-            row.push_back(nums[i*(numEq+1)+j]);
+        for (unsigned int j = 0; j < numEq; j++) {
+            row.push_back(numsA[i*(numEq)+j]);
         }
+        row.push_back(numsB[i]);
         augmentedMatrix.push_back(row);
     }
-
     // Prepare the response
     json res;
     // bisection logic
@@ -333,17 +336,18 @@ void postGaussianEliminationTotalPivot(const Rest::Request &request, Http::Respo
     // parse json
     auto json_body = json::parse(body);
     double numEq = json_body["numEq"];
-    std::vector<double> nums = json_body["nums"];
+    std::vector<double> numsA = json_body["numsA"];
+    std::vector<double> numsB = json_body["numsB"];
     // preprocess info
     std::vector<std::vector<double>> augmentedMatrix;
     for (unsigned int i = 0; i < numEq; i++) {
         std::vector<double> row;
-        for (unsigned int j = 0; j < numEq + 1; j++) {
-            row.push_back(nums[i*(numEq+1)+j]);
+        for (unsigned int j = 0; j < numEq; j++) {
+            row.push_back(numsA[i*(numEq)+j]);
         }
+        row.push_back(numsB[i]);
         augmentedMatrix.push_back(row);
     }
-
     // Prepare the response
     json res;
     // bisection logic
@@ -541,11 +545,11 @@ void postLagrange(const Rest::Request &request, Http::ResponseWriter response) {
     std::string body = request.body();
     // parse json
     auto json_body = json::parse(body);
-    double numPoints = json_body["numPoints"];
+    // double numPoints = json_body["numPoints"];
     std::vector<double> points = json_body["points"];
     // preprocess info
     std::vector<numath::Point> pointsVec;
-    for (unsigned int i = 0; i < numPoints; i+=2) {
+    for (unsigned int i = 0; i < points.size(); i+=2) {
         numath::Point p = {points[i], points[i+1]};
         pointsVec.push_back(p);
     }
@@ -554,6 +558,217 @@ void postLagrange(const Rest::Request &request, Http::ResponseWriter response) {
     // bisection logic
     std::string pol = numath::interpolation::lagrange(pointsVec);
     res["pol"] = pol;
+    // Send the response
+    auto mime = MIME(Application, Json);
+    response.send(Http::Code::Ok, res.dump(), mime);
+}
+
+void postNewtonInterp(const Rest::Request &request, Http::ResponseWriter response) {
+    std::string body = request.body();
+    // parse json
+    auto json_body = json::parse(body);
+    // double numPoints = json_body["numPoints"];
+    std::vector<double> points = json_body["points"];
+    // preprocess info
+    std::vector<numath::Point> pointsVec;
+    for (unsigned int i = 0; i < points.size(); i+=2) {
+        numath::Point p = {points[i], points[i+1]};
+        pointsVec.push_back(p);
+    }
+    // Prepare the response
+    json res;
+    // bisection logic
+    std::string pol = numath::interpolation::newton(pointsVec);
+    res["pol"] = pol;
+    // Send the response
+    auto mime = MIME(Application, Json);
+    response.send(Http::Code::Ok, res.dump(), mime);
+}
+
+void postLinearSpline(const Rest::Request &request, Http::ResponseWriter response) {
+    std::string body = request.body();
+    // parse json
+    auto json_body = json::parse(body);
+    // double numPoints = json_body["numPoints"];
+    std::vector<double> points = json_body["points"];
+    // preprocess info
+    std::vector<numath::Point> pointsVec;
+    for (unsigned int i = 0; i < points.size(); i+=2) {
+        numath::Point p = {points[i], points[i+1]};
+        pointsVec.push_back(p);
+    }
+    // Prepare the response
+    json res;
+    // bisection logic
+    numath::PiecewiseFunction pf = numath::interpolation::linearSpline(pointsVec);
+    std::vector<std::string> functions = pf.functions;
+    std::vector<double> limits;
+    for (numath::Point p : pf.limits) {
+        limits.push_back(p.x);
+        limits.push_back(p.y);
+    }
+    // json j_vec(functions);
+    // json j_vec(limits);
+    res["functions"] = functions;
+    res["limits"] = limits;
+    // Send the response
+    auto mime = MIME(Application, Json);
+    response.send(Http::Code::Ok, res.dump(), mime);
+}
+
+void postQuadraticSpline(const Rest::Request &request, Http::ResponseWriter response) {
+    std::string body = request.body();
+    // parse json
+    auto json_body = json::parse(body);
+    // double numPoints = json_body["numPoints"];
+    std::vector<double> points = json_body["points"];
+    // preprocess info
+    std::vector<numath::Point> pointsVec;
+    for (unsigned int i = 0; i < points.size(); i+=2) {
+        numath::Point p = {points[i], points[i+1]};
+        pointsVec.push_back(p);
+    }
+    // Prepare the response
+    json res;
+    // bisection logic
+    auto pair = numath::interpolation::quadraticSpline(pointsVec);
+    std::vector<std::vector<double>> matrix = pair.first;
+    std::vector<double> indep = pair.second;
+    // for (std::vector<double> r : pair.first) {
+    //     std::vector<double> row = r;
+    //     matrix.push_back(row);
+    // }
+    res["matrix"] = matrix;
+    res["indep"] = indep;
+    // Send the response
+    auto mime = MIME(Application, Json);
+    response.send(Http::Code::Ok, res.dump(), mime);
+}
+
+void postCubicSpline(const Rest::Request &request, Http::ResponseWriter response) {
+    std::string body = request.body();
+    // parse json
+    auto json_body = json::parse(body);
+    // double numPoints = json_body["numPoints"];
+    std::vector<double> points = json_body["points"];
+    // preprocess info
+    std::vector<numath::Point> pointsVec;
+    for (unsigned int i = 0; i < points.size(); i+=2) {
+        numath::Point p = {points[i], points[i+1]};
+        pointsVec.push_back(p);
+    }
+    // Prepare the response
+    json res;
+    // bisection logic
+    auto pair = numath::interpolation::cubicSpline(pointsVec);
+    std::vector<std::vector<double>> matrix = pair.first;
+    std::vector<double> indep = pair.second;
+    // for (std::vector<double> r : pair.first) {
+    //     std::vector<double> row = r;
+    //     matrix.push_back(row);
+    // }
+    res["matrix"] = matrix;
+    res["indep"] = indep;
+    // Send the response
+    auto mime = MIME(Application, Json);
+    response.send(Http::Code::Ok, res.dump(), mime);
+}
+
+void postDiferentiation(const Rest::Request &request, Http::ResponseWriter response) {
+    std::string body = request.body();
+    // parse json
+    auto json_body = json::parse(body);
+    int numPoints = json_body["numPoints"];
+    std::vector<double> points = json_body["points"];
+    std::string direction = json_body["direction"];
+    double h = json_body["h"];
+    // preprocess info
+    std::vector<numath::Point> pointsVec;
+    for (unsigned int i = 0; i < points.size(); i+=2) {
+        numath::Point p = {points[i], points[i+1]};
+        pointsVec.push_back(p);
+    }
+    int dir;
+    if (direction == "Backwards") {
+        dir = 0;
+    }
+    else if (direction == "Forward") {
+        dir = 1;
+    }
+    else {
+        dir = 2;
+    }
+    // Prepare the response
+    json res;
+    // bisection logic
+    double value = numath::differentiation::differentiation(pointsVec, dir, h, numPoints);
+    res["value"] = value;
+    // Send the response
+    auto mime = MIME(Application, Json);
+    response.send(Http::Code::Ok, res.dump(), mime);
+}
+
+void postTrapezium(const Rest::Request &request, Http::ResponseWriter response) {
+    std::string body = request.body();
+    // parse json
+    auto json_body = json::parse(body);
+    // int numPoints = json_body["numPoints"];
+    std::vector<double> points = json_body["points"];
+    // preprocess info
+    std::vector<numath::Point> pointsVec;
+    for (unsigned int i = 0; i < points.size(); i+=2) {
+        numath::Point p = {points[i], points[i+1]};
+        pointsVec.push_back(p);
+    }
+    // Prepare the response
+    json res;
+    // bisection logic
+    double value = numath::integration::trapezium(pointsVec);
+    res["value"] = value;
+    // Send the response
+    auto mime = MIME(Application, Json);
+    response.send(Http::Code::Ok, res.dump(), mime);
+}
+
+void postSimposonOneThird(const Rest::Request &request, Http::ResponseWriter response) {
+    std::string body = request.body();
+    // parse json
+    auto json_body = json::parse(body);
+    // int numPoints = json_body["numPoints"];
+    std::vector<double> points = json_body["points"];
+    // preprocess info
+    std::vector<numath::Point> pointsVec;
+    for (unsigned int i = 0; i < points.size(); i+=2) {
+        numath::Point p = {points[i], points[i+1]};
+        pointsVec.push_back(p);
+    }
+    // Prepare the response
+    json res;
+    // bisection logic
+    double value = numath::integration::simpsonOneThird(pointsVec);
+    res["value"] = value;
+    // Send the response
+    auto mime = MIME(Application, Json);
+    response.send(Http::Code::Ok, res.dump(), mime);
+}
+
+void postSimpsonThreeEights(const Rest::Request &request, Http::ResponseWriter response) {
+    std::string body = request.body();
+    // parse json
+    auto json_body = json::parse(body);
+    // int numPoints = json_body["numPoints"];
+    std::vector<double> points = json_body["points"];
+    // preprocess info
+    std::vector<numath::Point> pointsVec;
+    for (unsigned int i = 0; i < points.size(); i+=2) {
+        numath::Point p = {points[i], points[i+1]};
+        pointsVec.push_back(p);
+    }
+    // Prepare the response
+    json res;
+    // bisection logic
+    double value = numath::integration::simpsonThreeEighths(pointsVec);
+    res["value"] = value;
     // Send the response
     auto mime = MIME(Application, Json);
     response.send(Http::Code::Ok, res.dump(), mime);
@@ -583,6 +798,14 @@ int main() {
     Rest::Routes::Post(router, "/methods/gaussSeidel", Rest::Routes::bind(postGaussSeidel));
     Rest::Routes::Post(router, "/methods/jacobi", Rest::Routes::bind(postJacobi));
     Rest::Routes::Post(router, "/methods/lagrange", Rest::Routes::bind(postLagrange));
+    Rest::Routes::Post(router, "/methods/newtonInterp", Rest::Routes::bind(postNewtonInterp));
+    Rest::Routes::Post(router, "/methods/linearSpline", Rest::Routes::bind(postLinearSpline));
+    Rest::Routes::Post(router, "/methods/quadraticSpline", Rest::Routes::bind(postQuadraticSpline));
+    Rest::Routes::Post(router, "/methods/cubicSpline", Rest::Routes::bind(postCubicSpline));
+    Rest::Routes::Post(router, "/methods/diferentiation", Rest::Routes::bind(postDiferentiation));
+    Rest::Routes::Post(router, "/methods/trapezium", Rest::Routes::bind(postTrapezium));
+    Rest::Routes::Post(router, "/methods/simpsonOne", Rest::Routes::bind(postSimposonOneThird));
+    Rest::Routes::Post(router, "/methods/simpsonThree", Rest::Routes::bind(postSimpsonThreeEights));
 
     server.setHandler(router.handler());
     // server.setHandler(std::make_shared<helloHandler>());
