@@ -58,6 +58,7 @@ void postIncrementalSearch(const Rest::Request &request, Http::ResponseWriter re
     if (interval.wasSuccessful) {
         res["first"] = interval.first;
         res["last"] = interval.last;
+        res["table"] = table;
     }
     else {
         res["error"] = "Could not find anything";
@@ -87,6 +88,7 @@ void postBisection(const Rest::Request &request, Http::ResponseWriter response) 
     try {
         double root = numath::singleVariableEquations::bisection(function, xi, xu, nIter, tol, err.c_str(), table);
         res["root"] = root;
+        res["table"] = table;
     }
     catch (numath::IntervalException &intEx) {
         res["error"] = intEx.what();
@@ -119,6 +121,7 @@ void postFalsePosition(const Rest::Request &request, Http::ResponseWriter respon
     try {
         double root = numath::singleVariableEquations::falsePosition(function, xi, xu, nIter, tol, err.c_str(), table);
         res["root"] = root;
+        res["table"] = table;
     }
     catch (numath::IntervalException &intEx) {
         res["error"] = intEx.what();
@@ -153,6 +156,7 @@ void postFixedPoint(const Rest::Request &request, Http::ResponseWriter response)
     try {
         double root = numath::singleVariableEquations::fixedPoint(function, helperFunction, xa, nIter, tol, err.c_str(), table);
         res["root"] = root;
+        res["table"] = table;
     }
     catch (numath::IterException &iterEx) {
         res["error"] = iterEx.what();
@@ -184,6 +188,7 @@ void postNewtonSingle(const Rest::Request &request, Http::ResponseWriter respons
     try {
         double root = numath::singleVariableEquations::newton(function, helperFunction, x0, nIter, tol, err.c_str(), table);
         res["root"] = root;
+        res["table"] = table;
     }
     catch (numath::IterException &iterEx) {
         res["error"] = iterEx.what();
@@ -217,6 +222,7 @@ void postSecant(const Rest::Request &request, Http::ResponseWriter response) {
     try {
         double root = numath::singleVariableEquations::secant(function, x0, x1, nIter, tol, err.c_str(), table);
         res["root"] = root;
+        res["table"] = table;
     }
     catch (numath::IterException &iterEx) {
         res["error"] = iterEx.what();
@@ -253,6 +259,7 @@ void postMultipleRoots(const Rest::Request &request, Http::ResponseWriter respon
     try {
         double root = numath::singleVariableEquations::multipleRoots(function, helperFunction, helperFunction2, x0, nIter, tol, err.c_str(), table);
         res["root"] = root;
+        res["table"] = table;
     }
     catch (numath::IterException &iterEx) {
         res["error"] = iterEx.what();
@@ -493,6 +500,7 @@ void postGaussSeidel(const Rest::Request &request, Http::ResponseWriter response
         std::vector<double> results = numath::systemsOfEquations::solveIterative(matrix, numsB, initVals, tol, nIter, numath::systemsOfEquations::gaussSeidel, err == "Absolute"?numath::absNorm:numath::relNorm, lambda, table);
         json j_vec(results);
         res["results"] = results;
+        res["table"] = table;
     }
     catch (numath::IterException &iterEx) {
         res["error"] = iterEx.what();
@@ -532,6 +540,7 @@ void postJacobi(const Rest::Request &request, Http::ResponseWriter response) {
         std::vector<double> results = numath::systemsOfEquations::solveIterative(matrix, numsB, initVals, tol, nIter, numath::systemsOfEquations::jacobi, err == "Absolute"?numath::absNorm:numath::relNorm, lambda, table);
         json j_vec(results);
         res["results"] = results;
+        res["table"] = table;
     }
     catch (numath::IterException &iterEx) {
         res["error"] = iterEx.what();
@@ -577,9 +586,11 @@ void postNewtonInterp(const Rest::Request &request, Http::ResponseWriter respons
     }
     // Prepare the response
     json res;
+    std::vector<std::vector<double>> table;
     // bisection logic
-    std::string pol = numath::interpolation::newton(pointsVec);
+    std::string pol = numath::interpolation::newton(pointsVec, table);
     res["pol"] = pol;
+    res["table"] = table;
     // Send the response
     auto mime = MIME(Application, Json);
     response.send(Http::Code::Ok, res.dump(), mime);
